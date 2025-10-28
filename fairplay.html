@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FairPlay - Soccer Sub Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #f0fdf4, #dcfce7);
+      min-height: 100vh;
+      padding: 12px;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    .header {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: bold;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .timer-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .timer {
+      font-size: 32px;
+      font-family: monospace;
+      font-weight: bold;
+      color: #374151;
+    }
+    
+    .btn-timer {
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      font-size: 24px;
+    }
+    
+    .btn-timer.running { background: #dc2626; }
+    .btn-timer.stopped { background: #16a34a; }
+    .btn-timer:active { opacity: 0.8; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    
+    @media (max-width: 600px) {
+      .grid { 
+        grid-template-columns: 1fr; 
+      }
+      
+      .header h1 {
+        font-size: 18px;
+      }
+      
+      .timer {
+        font-size: 24px;
+      }
+      
+      .btn-timer {
+        padding: 12px;
+        font-size: 20px;
+      }
+      
+      .card {
+        padding: 16px;
+      }
+      
+      .card h2 {
+        font-size: 18px;
+      }
+      
+      .position-circle {
+        width: 60px;
+        height: 60px;
+        font-size: 10px;
+      }
+      
+      .player-name {
+        font-size: 11px;
+      }
+      
+      .player-stats {
+        font-size: 8px;
+      }
+      
+      .position-label {
+        font-size: 12px;
+      }
+      
+      .bench-player {
+        padding: 12px;
+      }
+      
+      .player-info-name {
+        font-size: 14px;
+      }
+      
+      .player-info-details {
+        font-size: 12px;
+      }
+      
+      .bench-time-value {
+        font-size: 20px;
+      }
+      
+      .btn-swap {
+        padding: 14px;
+        font-size: 16px;
+      }
+      
+      .swap-preview {
+        font-size: 14px;
+      }
+    }
+    
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    
+    .card h2 {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .field-container {
+      position: relative;
+      background: linear-gradient(to bottom, #16a34a, #15803d);
+      border-radius: 12px;
+      padding-bottom: 140%;
+    }
+    
+    .field-markings {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .position {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .position.selected { transform: translate(-50%, -50%) scale(1.1); }
+    
+    .position-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      font-size: 12px;
+      text-align: center;
+      padding: 4px;
+    }
+    
+    .position-circle.empty { background: #9ca3af; }
+    .position-circle.selected { background: #eab308 !important; box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.5); }
+    
+    .position-label {
+      text-align: center;
+      color: white;
+      font-size: 14px;
+      margin-top: 4px;
+      font-weight: bold;
+    }
+    
+    .player-name { font-size: 14px; line-height: 1.2; }
+    .player-stats { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+    
+    .color-1 { background: #4c0519; }
+    .color-2 { background: #b91c1c; }
+    .color-3 { background: #ef4444; }
+    .color-4 { background: #fb923c; }
+    .color-5 { background: #f472b6; }
+    .color-6 { background: #f9a8d4; }
+    .color-7 { background: #fbcfe8; }
+    
+    .bench-list {
+      max-height: 400px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .bench-player {
+      padding: 16px;
+      border-radius: 12px;
+      background: #f9fafb;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: background 0.2s;
+    }
+    
+    .bench-player:active { background: #e5e7eb; }
+    .bench-player.selected { background: #fef3c7; box-shadow: 0 0 0 2px #eab308; }
+    
+    .player-info { flex: 1; }
+    .player-info-name { font-weight: bold; color: #1f2937; font-size: 16px; }
+    .player-info-details { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    
+    .bench-time {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+    
+    .bench-time-value { font-size: 24px; font-weight: bold; color: #dc2626; }
+    
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 20px;
+    }
+    
+    .btn-delete:active { color: #dc2626; }
+    
+    .btn-swap {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-weight: bold;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .btn-swap.enabled { background: #16a34a; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-swap.disabled { background: #d1d5db; cursor: not-allowed; }
+    .btn-swap.enabled:active { background: #15803d; }
+    
+    .swap-preview {
+      text-align: center;
+      color: #6b7280;
+      font-size: 16px;
+      font-weight: 500;
+      margin-top: 8px;
+    }
+    
+    .add-player-form {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .add-player-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #d1d5db;
+      border-radius: 12px;
+      outline: none;
+    }
+    
+    .add-player-input:focus { border-color: #16a34a; }
+    
+    .btn-add {
+      padding: 12px 20px;
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .btn-add:active { background: #15803d; }
+    
+    .right-column { display: flex; flex-direction: column; gap: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <span>⚽</span>
+        FairPlay
+      </h1>
+      <div class="timer-section">
+        <div class="timer" id="timer">0:00</div>
+        <button class="btn-timer stopped" id="timerBtn" onclick="toggleTimer()">▶</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Field (7 players)</h2>
+        <div class="field-container">
+          <svg class="field-markings" viewBox="0 0 100 140">
+            <rect x="2" y="2" width="96" height="136" fill="none" stroke="white" stroke-width="0.5" opacity="0.6" />
+            <line x1="2" y1="70" x2="98" y2="70" stroke="white" stroke-width="0.5" opacity="0.6" />
+            <circle cx="50" cy="70" r="10" fill="none" stroke="white" stroke-width="0.5" opacity="0.6" />
+            <rect x="32" y="2" width="36" height="15" fill="none" stroke="white" stroke-width="0.5" opacity="0.6" />
+            <rect x="32" y="123" width="36" height="15" fill="none" stroke="white" stroke-width="0.5" opacity="0.6" />
+          </svg>
+          <div id="field"></div>
+        </div>
+      </div>
+
+      <div class="right-column">
+        <div class="card">
+          <h2>⇄ Substitution</h2>
+          <button class="btn-swap disabled" id="swapBtn" onclick="makeSubstitution()">Swap Players</button>
+          <div class="swap-preview" id="swapPreview"></div>
+        </div>
+
+        <div class="card">
+          <h2>🕐 Bench (<span id="benchCount">0</span>)</h2>
+          <div class="bench-list" id="bench"></div>
+        </div>
+
+        <div class="card">
+          <h2>Add Player</h2>
+          <div class="add-player-form">
+            <input type="text" class="add-player-input" id="newPlayerInput" placeholder="Player name" onkeypress="if(event.key==='Enter')addPlayer()">
+            <button class="btn-add" onclick="addPlayer()">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const positions = {
+      GK: { x: 50, y: 88, label: 'GK' },
+      LD: { x: 28, y: 65, label: 'LD' },
+      RD: { x: 72, y: 65, label: 'RD' },
+      LM: { x: 28, y: 42, label: 'LM' },
+      RM: { x: 72, y: 42, label: 'RM' },
+      LS: { x: 35, y: 18, label: 'LS' },
+      RS: { x: 65, y: 18, label: 'RS' }
+    };
+
+    let state = {
+      players: [
+        { id: 1, name: 'A.J.', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 2, name: 'Ace', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 3, name: 'Agelesh', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 4, name: 'Caelin', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 5, name: 'Emery', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 6, name: 'Javier', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 7, name: 'Melina', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 8, name: 'Merrick', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 9, name: 'Ram', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 10, name: 'Spencer', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 },
+        { id: 11, name: 'Yusuf', position: null, status: 'bench', benchTime: 0, lastPosition: null, fieldTime: 0, currentStintTime: 0, timesOnField: 0 }
+      ],
+      gameTime: 0,
+      isRunning: false,
+      selectedFieldPlayer: null,
+      selectedBenchPlayer: null,
+      timerInterval: null
+    };
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function getOnFieldPlayers() {
+      return state.players.filter(p => p.status === 'on-field');
+    }
+
+    function getBenchPlayers() {
+      return state.players.filter(p => p.status === 'bench').sort((a, b) => b.benchTime - a.benchTime);
+    }
+
+    function getPlayerColor(player) {
+      const onFieldPlayers = getOnFieldPlayers();
+      const fieldTimeGroups = {};
+      onFieldPlayers.forEach(p => {
+        if (!fieldTimeGroups[p.currentStintTime]) fieldTimeGroups[p.currentStintTime] = [];
+        fieldTimeGroups[p.currentStintTime].push(p);
+      });
+      
+      const uniqueTimes = Object.keys(fieldTimeGroups).map(Number).sort((a, b) => b - a);
+      const groupIndex = uniqueTimes.findIndex(time => fieldTimeGroups[time].some(p => p.id === player.id));
+      
+      return `color-${Math.min(groupIndex + 1, 7)}`;
+    }
+
+    function toggleTimer() {
+      state.isRunning = !state.isRunning;
+      const btn = document.getElementById('timerBtn');
+      
+      if (state.isRunning) {
+        btn.innerHTML = '⏸';
+        btn.className = 'btn-timer running';
+        state.timerInterval = setInterval(() => {
+          state.gameTime++;
+          state.players = state.players.map(p => {
+            if (p.status === 'bench') return { ...p, benchTime: p.benchTime + 1 };
+            if (p.status === 'on-field') return { ...p, fieldTime: p.fieldTime + 1, currentStintTime: p.currentStintTime + 1 };
+            return p;
+          });
+          render();
+        }, 1000);
+      } else {
+        btn.innerHTML = '▶';
+        btn.className = 'btn-timer stopped';
+        clearInterval(state.timerInterval);
+      }
+    }
+
+    function selectFieldPlayer(id) {
+      state.selectedFieldPlayer = state.selectedFieldPlayer === id ? null : id;
+      render();
+    }
+
+    function selectBenchPlayer(id) {
+      state.selectedBenchPlayer = state.selectedBenchPlayer === id ? null : id;
+      render();
+    }
+
+    function makeSubstitution() {
+      if (!state.selectedFieldPlayer || !state.selectedBenchPlayer) return;
+      
+      const fieldPlayer = state.players.find(p => p.id === state.selectedFieldPlayer);
+      state.players = state.players.map(p => {
+        if (p.id === state.selectedFieldPlayer) {
+          return { ...p, position: null, status: 'bench', lastPosition: p.position, benchTime: 0, currentStintTime: 0 };
+        }
+        if (p.id === state.selectedBenchPlayer) {
+          return { ...p, position: fieldPlayer.position, status: 'on-field', benchTime: 0, currentStintTime: 0, timesOnField: p.timesOnField + 1 };
+        }
+        return p;
+      });
+      
+      state.selectedFieldPlayer = null;
+      state.selectedBenchPlayer = null;
+      render();
+    }
+
+    function movePlayerToPosition(playerId, newPosition) {
+      const player = state.players.find(p => p.id === playerId);
+      const occupyingPlayer = state.players.find(p => p.position === newPosition && p.id !== playerId);
+      
+      state.players = state.players.map(p => {
+        if (p.id === playerId) {
+          const wasOnBench = p.status === 'bench';
+          return { 
+            ...p, 
+            position: newPosition, 
+            status: 'on-field',
+            timesOnField: wasOnBench ? p.timesOnField + 1 : p.timesOnField,
+            benchTime: 0,
+            currentStintTime: wasOnBench ? 0 : p.currentStintTime
+          };
+        }
+        if (occupyingPlayer && p.id === occupyingPlayer.id) {
+          // If dragging player is from field, swap positions; if from bench, send occupying player to bench
+          if (player.status === 'on-field' && player.position) {
+            // Swap positions
+            return { 
+              ...p, 
+              position: player.position
+            };
+          } else {
+            // Send to bench
+            return { 
+              ...p, 
+              position: null, 
+              status: 'bench',
+              lastPosition: p.position,
+              benchTime: 0,
+              currentStintTime: 0
+            };
+          }
+        }
+        return p;
+      });
+      render();
+    }
+
+    function addPlayer() {
+      const input = document.getElementById('newPlayerInput');
+      const name = input.value.trim();
+      if (name) {
+        state.players.push({
+          id: Date.now(),
+          name: name,
+          position: null,
+          status: 'bench',
+          benchTime: state.gameTime,
+          lastPosition: null,
+          fieldTime: 0,
+          currentStintTime: 0,
+          timesOnField: 0
+        });
+        input.value = '';
+        render();
+      }
+    }
+
+    function removePlayer(id) {
+      state.players = state.players.filter(p => p.id !== id);
+      if (state.selectedFieldPlayer === id) state.selectedFieldPlayer = null;
+      if (state.selectedBenchPlayer === id) state.selectedBenchPlayer = null;
+      render();
+    }
+
+    function render() {
+      document.getElementById('timer').textContent = formatTime(state.gameTime);
+      
+      const onFieldPlayers = getOnFieldPlayers();
+      const benchPlayers = getBenchPlayers();
+      
+      // Render field
+      const fieldHTML = Object.entries(positions).map(([pos, coords]) => {
+        const player = onFieldPlayers.find(p => p.position === pos);
+        const isSelected = state.selectedFieldPlayer === player?.id;
+        
+        return `
+          <div class="position ${isSelected ? 'selected' : ''}" 
+               style="left: ${coords.x}%; top: ${coords.y}%;"
+               ${player ? `onclick="selectFieldPlayer(${player.id})" draggable="true" ondragstart="event.dataTransfer.setData('playerId', '${player.id}')"` : ''}
+               ondrop="event.preventDefault(); movePlayerToPosition(parseInt(event.dataTransfer.getData('playerId')), '${pos}')"
+               ondragover="event.preventDefault()">
+            <div class="position-circle ${player ? getPlayerColor(player) : 'empty'} ${isSelected ? 'selected' : ''}">
+              ${player ? `
+                <div class="player-name">${player.name.split(' ')[0].substring(0, 10)}</div>
+                <div class="player-stats">×${player.timesOnField} | ${formatTime(player.currentStintTime)}</div>
+              ` : pos}
+            </div>
+            <div class="position-label">${pos}</div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('field').innerHTML = fieldHTML;
+      
+      // Render bench
+      const benchHTML = benchPlayers.map(player => {
+        const isSelected = state.selectedBenchPlayer === player.id;
+        return `
+          <div class="bench-player ${isSelected ? 'selected' : ''}"
+               draggable="true"
+               ondragstart="event.dataTransfer.setData('playerId', '${player.id}')"
+               onclick="selectBenchPlayer(${player.id})">
+            <div class="player-info">
+              <div class="player-info-name">${player.name}</div>
+              <div class="player-info-details">Last: ${player.lastPosition || 'N/A'} | ×${player.timesOnField} | ${formatTime(player.fieldTime)}</div>
+            </div>
+            <div class="bench-time">
+              <div class="bench-time-value">${formatTime(player.benchTime)}</div>
+              <button class="btn-delete" onclick="event.stopPropagation(); removePlayer(${player.id})">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('bench').innerHTML = benchHTML;
+      document.getElementById('benchCount').textContent = benchPlayers.length;
+      
+      // Render swap button
+      const swapBtn = document.getElementById('swapBtn');
+      const swapPreview = document.getElementById('swapPreview');
+      
+      if (state.selectedFieldPlayer && state.selectedBenchPlayer) {
+        swapBtn.className = 'btn-swap enabled';
+        const fieldPlayer = state.players.find(p => p.id === state.selectedFieldPlayer);
+        const benchPlayer = state.players.find(p => p.id === state.selectedBenchPlayer);
+        swapPreview.textContent = `${fieldPlayer.name} ↔️ ${benchPlayer.name}`;
+      } else {
+        swapBtn.className = 'btn-swap disabled';
+        swapPreview.textContent = '';
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
